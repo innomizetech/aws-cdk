@@ -14,6 +14,7 @@
 
 ---
 <!--END STABILITY BANNER-->
+
 [Amazon Cognito](https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html) provides
 authentication, authorization, and user management for your web and mobile apps. Your users can sign in directly with a
 user name and password, or through a third party such as Facebook, Amazon, Google or Apple.
@@ -201,8 +202,13 @@ The default value is `false`.
 
 Cognito sends various messages to its users via SMS, for different actions, ranging from account verification to
 marketing. In order to send SMS messages, Cognito needs an IAM role that it can assume, with permissions that allow it
-to send SMS messages. By default, CDK will create this IAM role but can also be explicily specified to an existing IAM
-role using the `smsRole` property.
+to send SMS messages.
+
+By default, the CDK looks at all of the specified properties (and their defaults when not explicitly specified) and
+automatically creates an SMS role, when needed. For example, if MFA second factor by SMS is enabled, the CDK will
+create a new role. The `smsRole` property can be used to specify the user supplied role that should be used instead.
+Additionally, the property `enableSmsRole` can be used to override the CDK's default behaviour to either enable or
+suppress automatic role creation.
 
 ```ts
 import { Role } from '@aws-cdk/aws-iam';
@@ -278,7 +284,7 @@ can either be email and/or SMS. Read more at [Recovering User Accounts](https://
 ```ts
 new UserPool(this, 'UserPool', {
   ...,
-  accountRecoverySettings: AccountRecovery.EMAIL_ONLY,
+  accountRecovery: AccountRecovery.EMAIL_ONLY,
 })
 ```
 
@@ -291,7 +297,7 @@ Read more about [email settings here](https://docs.aws.amazon.com/cognito/latest
 ```ts
 new UserPool(this, 'myuserpool', {
   // ...
-  emailTransmission: {
+  emailSettings: {
     from: 'noreply@myawesomeapp.com',
     replyTo: 'support@myawesomeapp.com',
   },
@@ -314,6 +320,8 @@ Lambda triggers can either be specified as part of the `UserPool` initialization
 on the construct, as so -
 
 ```ts
+import * as lambda from '@aws-cdk/aws-lambda';
+
 const authChallengeFn = new lambda.Function(this, 'authChallengeFn', {
   // ...
 });
@@ -339,7 +347,7 @@ Triggers](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user
 
 Any user pool that has been created outside of this stack, can be imported into the CDK app. Importing a user pool
 allows for it to be used in other parts of the CDK app that reference an `IUserPool`. However, imported user pools have
-limited configurability. As a rule of thumb, none of the properties that is are part of the
+limited configurability. As a rule of thumb, none of the properties that are part of the
 [`AWS::Cognito::UserPool`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cognito-userpool.html)
 CloudFormation resource can be configured.
 
@@ -467,6 +475,7 @@ pool.addClient('app-client', {
     },
     scopes: [ OAuthScope.OPENID ],
     callbackUrls: [ 'https://my-app-domain.com/welcome' ],
+    logoutUrls: [ 'https://my-app-domain.com/signin' ],
   }
 });
 ```
@@ -560,3 +569,10 @@ const signInUrl = domain.signInUrl(client, {
 })
 ```
 
+Existing domains can be imported into CDK apps using `UserPoolDomain.fromDomainName()` API
+
+```ts
+const stack = new Stack(app, 'my-stack');
+
+const myUserPoolDomain = UserPoolDomain.fromDomainName(stack, 'my-user-pool-domain', 'domain-name');
+```

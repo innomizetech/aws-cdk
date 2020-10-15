@@ -68,7 +68,7 @@ fileSystem.connections.allowDefaultPortFrom(instance);
 
 In order to automatically mount this file system during instance launch, 
 following code can be used as reference:
-```
+```ts
 const vpc = new ec2.Vpc(this, 'VPC');
 
 const fileSystem = new efs.FileSystem(this, 'MyEfsFileSystem', {
@@ -76,7 +76,8 @@ const fileSystem = new efs.FileSystem(this, 'MyEfsFileSystem', {
   encrypted: true,
   lifecyclePolicy: efs.LifecyclePolicy.AFTER_14_DAYS,
   performanceMode: efs.PerformanceMode.GENERAL_PURPOSE,
-  throughputMode: efs.ThroughputMode.BURSTING
+  throughputMode: efs.ThroughputMode.BURSTING,
+  enableAutomaticBackups: true
 });
 
 const inst = new Instance(this, 'inst', {

@@ -1,6 +1,7 @@
 import { arrayWith, objectLike } from '@aws-cdk/assert';
 import '@aws-cdk/assert/jest';
-import { App, Construct, Stack, Stage, StageProps } from '@aws-cdk/core';
+import { App, Stack, Stage, StageProps } from '@aws-cdk/core';
+import { Construct } from 'constructs';
 import * as cdkp from '../lib';
 import { sortedByRunOrder } from './testmatchers';
 import { BucketStack, PIPELINE_ENV, TestApp, TestGitHubNpmPipeline } from './testutil';
@@ -54,6 +55,29 @@ test('multiple independent stacks go in parallel', () => {
     }),
   });
 });
+
+test('manual approval is inserted in correct location', () => {
+  // WHEN
+  pipeline.addApplicationStage(new TwoStackApp(app, 'MyApp'), {
+    manualApprovals: true,
+  });
+
+  // THEN
+  expect(pipelineStack).toHaveResourceLike('AWS::CodePipeline::Pipeline', {
+    Stages: arrayWith({
+      Name: 'MyApp',
+      Actions: sortedByRunOrder([
+        objectLike({ Name: 'Stack1.Prepare' }),
+        objectLike({ Name: 'ManualApproval' }),
+        objectLike({ Name: 'Stack1.Deploy' }),
+        objectLike({ Name: 'Stack2.Prepare' }),
+        objectLike({ Name: 'ManualApproval2' }),
+        objectLike({ Name: 'Stack2.Deploy' }),
+      ]),
+    }),
+  });
+});
+
 
 class TwoStackApp extends Stage {
   constructor(scope: Construct, id: string, props?: StageProps) {

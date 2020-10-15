@@ -1,4 +1,5 @@
 import { expect, haveResource, SynthUtils } from '@aws-cdk/assert';
+import { ArnPrincipal, PolicyStatement } from '@aws-cdk/aws-iam';
 import { App, CfnOutput, Construct, Stack } from '@aws-cdk/core';
 import { Test } from 'nodeunit';
 import { Alias } from '../lib/alias';
@@ -16,7 +17,7 @@ export = {
 
     expect(stack).to(haveResource('AWS::KMS::Alias', {
       AliasName: 'alias/foo',
-      TargetKeyId: { 'Fn::GetAtt': [ 'Key961B73FD', 'Arn' ] },
+      TargetKeyId: { 'Fn::GetAtt': ['Key961B73FD', 'Arn'] },
     }));
 
     test.done();
@@ -38,7 +39,7 @@ export = {
 
     expect(stack).to(haveResource('AWS::KMS::Alias', {
       AliasName: 'alias/foo',
-      TargetKeyId: { 'Fn::GetAtt': [ 'Key961B73FD', 'Arn' ] },
+      TargetKeyId: { 'Fn::GetAtt': ['Key961B73FD', 'Arn'] },
     }));
 
     test.done();
@@ -56,7 +57,7 @@ export = {
 
     expect(stack).to(haveResource('AWS::KMS::Alias', {
       AliasName: 'alias/foo',
-      TargetKeyId: { 'Fn::GetAtt': [ 'Key961B73FD', 'Arn' ] },
+      TargetKeyId: { 'Fn::GetAtt': ['Key961B73FD', 'Arn'] },
     }));
 
     test.done();
@@ -135,6 +136,7 @@ export = {
       aliasName: 'alias/myAlias',
     });
 
+    /* eslint-disable cdk/no-core-construct */
     class MyConstruct extends Construct {
       constructor(scope: Construct, id: string, key: IKey) {
         super(scope, id);
@@ -147,6 +149,7 @@ export = {
         });
       }
     }
+    /* eslint-enable cdk/no-core-construct */
 
     new MyConstruct(stack, 'MyConstruct', myAlias);
 
@@ -179,6 +182,7 @@ export = {
 
     const myAlias = Alias.fromAliasName(stack, 'MyAlias', 'alias/myAlias');
 
+    /* eslint-disable cdk/no-core-construct */
     class MyConstruct extends Construct {
       constructor(scope: Construct, id: string, key: IKey) {
         super(scope, id);
@@ -191,6 +195,7 @@ export = {
         });
       }
     }
+    /* eslint-enable cdk/no-core-construct */
 
     new MyConstruct(stack, 'MyConstruct', myAlias);
 
@@ -223,8 +228,23 @@ export = {
 
     const myAlias = Alias.fromAliasName(stack, 'MyAlias', 'alias/myAlias');
 
-    test.throws(() => myAlias.aliasTargetKey, 'Cannot access aliasTargetKey on an Alias imnported by Alias.fromAliasName().');
+    test.throws(() => myAlias.aliasTargetKey, 'Cannot access aliasTargetKey on an Alias imported by Alias.fromAliasName().');
 
+    test.done();
+  },
+
+  'fails if alias policy is invalid'(test: Test) {
+    const app = new App();
+    const stack = new Stack(app, 'my-stack');
+    const key = new Key(stack, 'MyKey');
+    const alias = new Alias(stack, 'Alias', { targetKey: key, aliasName: 'alias/foo' });
+
+    alias.addToResourcePolicy(new PolicyStatement({
+      resources: ['*'],
+      principals: [new ArnPrincipal('arn')],
+    }));
+
+    test.throws(() => app.synth(), /A PolicyStatement must specify at least one \'action\' or \'notAction\'/);
     test.done();
   },
 };
